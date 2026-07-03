@@ -1,0 +1,100 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /** @description Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Fetches user data from the directory. */
+    function getUserData() {
+      return get(/databases/$(database)/documents/users_directory/$(request.auth.uid)).data;
+    }
+
+    /** @description Checks if the user is a super admin. */
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/roles_super_admin/$(request.auth.uid)) || 
+        getUserData().role == 'superadmin'
+      );
+    }
+
+    /** @description Checks if the user is an admin. */
+    function isAdmin() {
+      return isSignedIn() && (
+        isSuperAdmin() || 
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)) ||
+        getUserData().role == 'admin'
+      );
+    }
+
+    /** @description Checks if the user is a payment handler. */
+    function isPaymentHandler() {
+      return isSignedIn() && (isAdmin() || getUserData().role == 'payment_handler');
+    }
+
+    match /teachers/{teacherId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /students/{studentId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /classes/{classId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /payments/{paymentId} {
+      // Admins and handlers see everything. Teachers see only their own class payments.
+      allow read: if isPaymentHandler() || (
+        getUserData().role == 'teacher' && 
+        resource.data.teacherId == getUserData().referenceId
+      );
+      // Only authorized staff can record payments.
+      allow create: if isPaymentHandler();
+      // Only admins can modify historical financial records.
+      allow update, delete: if isAdmin();
+    }
+
+    match /deleted_payments/{paymentId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /teacher_payments/{paymentId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    match /attendance/{attendanceId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /users_directory/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow update: if isSignedIn() && (
+        isSuperAdmin() || 
+        (request.auth.uid == userId && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive'])))
+      );
+      allow delete: if isSuperAdmin();
+    }
+
+    match /roles_admin/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    match /roles_super_admin/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    match /settings/receipt_config {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+  }
+}

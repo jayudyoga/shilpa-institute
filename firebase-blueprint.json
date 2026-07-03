@@ -1,0 +1,74 @@
+
+{
+  "entities": {
+    "Teacher": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Teacher",
+      "type": "object",
+      "description": "Represents a teacher profile in the tuition management system.",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "phone": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "userId": { "type": "string" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["id", "fullName", "email", "subject", "phone", "isActive"]
+    },
+    "Student": {
+      "title": "Student",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "grade": { "type": "string" },
+        "parentPhone": { "type": "string" },
+        "enrolledClassIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "fullName", "grade", "parentPhone", "enrolledClassIds"]
+    },
+    "Class": {
+      "title": "Class",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "className": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "feeAmount": { "type": "number" },
+        "feeType": { "type": "string", "enum": ["monthly", "daily"] },
+        "schedule": { "type": "string" },
+        "teacherCommissionPercentage": { "type": "number" }
+      },
+      "required": ["id", "className", "teacherId", "feeAmount", "feeType", "schedule"]
+    },
+    "AppUser": {
+      "title": "AppUser",
+      "type": "object",
+      "description": "System identity management record.",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "admin", "teacher", "payment_handler"] },
+        "referenceId": { "type": "string" },
+        "requirePasswordChange": { "type": "boolean", "description": "Mandatory security update flag." },
+        "initialPassword": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "dashboardPreferences": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "auth": {
+    "providers": ["password", "google.com"]
+  },
+  "firestore": {
+    "/teachers/{teacherId}": { "schema": { "$ref": "#/backend/entities/Teacher" }, "description": "Faculty profiles." },
+    "/students/{studentId}": { "schema": { "$ref": "#/backend/entities/Student" }, "description": "Student registry." },
+    "/classes/{classId}": { "schema": { "$ref": "#/backend/entities/Class" }, "description": "Tuition nodes." },
+    "/users_directory/{userId}": { "schema": { "$ref": "#/backend/entities/AppUser" }, "description": "Global identity registry." }
+  }
+}
